@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Page } from '../types';
 
 export function useStoryNavigation(
@@ -10,48 +10,111 @@ export function useStoryNavigation(
 ) {
   const [imageIndex, setImageIndex] = useState(0);
   const [fadeIn, setFadeIn] = useState(true);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const navigationTimeoutRef = useRef<number | null>(null);
   
-  const handleChoice = (targetId: string | null) => {
-    console.log("handleChoice called with targetId:", targetId);
+  // Clean up any pending timeouts when component unmounts
+  const clearNavigationTimeout = useCallback(() => {
+    if (navigationTimeoutRef.current !== null) {
+      window.clearTimeout(navigationTimeoutRef.current);
+      navigationTimeoutRef.current = null;
+    }
+  }, []);
+  
+  const handleChoice = useCallback((targetId: string | null) => {
+    console.log("⚡ handleChoice called with targetId:", targetId);
     
-    if (targetId && pages[targetId]) {
-      console.log("Valid target page found:", pages[targetId].id, pages[targetId].title);
+    // Prevent multiple navigation attempts
+    if (isNavigating) {
+      console.log("🛑 Navigation already in progress, ignoring request");
+      return;
+    }
+    
+    if (!targetId) {
+      console.error("❌ Invalid targetId: null or undefined");
+      return;
+    }
+    
+    // Check if target page exists
+    if (!pages[targetId]) {
+      console.error("❌ Target page not found:", targetId);
+      console.log("📋 Available pages:", Object.keys(pages));
+      return;
+    }
+    
+    try {
+      console.log("✅ Valid target page found:", pages[targetId].id, pages[targetId].title);
       
+      // Set navigating flag to prevent multiple navigation attempts
+      setIsNavigating(true);
+      
+      // Disable fade animation for direct navigation
       setFadeIn(false);
-      setTimeout(() => {
-        setCurrentPageId(targetId);
-        setHistory(prev => [...prev, targetId]);
-        setImageIndex(0);
-        setFadeIn(true);
-        
-        // Scroll to story content
-        const storyContent = document.getElementById('story-content');
-        if (storyContent) {
-          storyContent.scrollIntoView({ behavior: 'smooth' });
+      
+      // Use a timeout to handle the navigation after fade out
+      clearNavigationTimeout();
+      navigationTimeoutRef.current = window.setTimeout(() => {
+        try {
+          // Update state with new page and history
+          setCurrentPageId(targetId);
+          setHistory(prev => [...prev, targetId]);
+          setImageIndex(0);
+          
+          // Reset fade in after state has been updated
+          setFadeIn(true);
+          setIsNavigating(false);
+          
+          // Scroll to story content
+          const storyContent = document.getElementById('story-content');
+          if (storyContent) {
+            storyContent.scrollIntoView({ behavior: 'smooth' });
+          }
+          
+          console.log("✅ Navigation completed successfully to:", targetId);
+        } catch (err) {
+          console.error("❌ Error during navigation state update:", err);
+          setIsNavigating(false);
         }
       }, 300);
-    } else {
-      console.error("Invalid targetId or target page not found:", targetId);
+    } catch (err) {
+      console.error("❌ Error during navigation:", err);
+      setIsNavigating(false);
     }
-  };
+  }, [pages, currentPageId, setCurrentPageId, setHistory, isNavigating, clearNavigationTimeout]);
 
-  const handleGoBack = () => {
-    if (history.length > 1) {
-      setFadeIn(false);
-      setTimeout(() => {
+  const handleGoBack = useCallback(() => {
+    if (history.length <= 1 || isNavigating) {
+      return;
+    }
+    
+    setIsNavigating(true);
+    setFadeIn(false);
+    
+    clearNavigationTimeout();
+    navigationTimeoutRef.current = window.setTimeout(() => {
+      try {
         const newHistory = [...history];
         newHistory.pop(); // Remove current page
         const prevPageId = newHistory[newHistory.length - 1];
+        
         setCurrentPageId(prevPageId);
         setHistory(newHistory);
         setImageIndex(0);
         setFadeIn(true);
-      }, 300);
-    }
-  };
+        setIsNavigating(false);
+      } catch (err) {
+        console.error("❌ Error during back navigation:", err);
+        setIsNavigating(false);
+      }
+    }, 300);
+  }, [history, setCurrentPageId, setHistory, isNavigating, clearNavigationTimeout]);
 
-  const handleRestart = () => {
-    // Find starting node again - prioritize page with pageNumber "1"
+  const handleRestart = useCallback(() => {
+    if (isNavigating) {
+      return;
+    }
+    
+    // Find starting node again
     const pageWithNumber1 = Object.values(pages).find(page => page.pageNumber === '1');
     const introNode = Object.values(pages).find(page => page.type === 'intro');
     const firstNode = Object.values(pages)[0];
@@ -63,33 +126,42 @@ export function useStoryNavigation(
       return;
     }
     
+    setIsNavigating(true);
     setFadeIn(false);
-    setTimeout(() => {
-      setCurrentPageId(startNode.id);
-      setHistory([startNode.id]);
-      setImageIndex(0);
-      setFadeIn(true);
+    
+    clearNavigationTimeout();
+    navigationTimeoutRef.current = window.setTimeout(() => {
+      try {
+        setCurrentPageId(startNode.id);
+        setHistory([startNode.id]);
+        setImageIndex(0);
+        setFadeIn(true);
+        setIsNavigating(false);
+      } catch (err) {
+        console.error("❌ Error during restart:", err);
+        setIsNavigating(false);
+      }
     }, 300);
-  };
+  }, [pages, setCurrentPageId, setHistory, isNavigating, clearNavigationTimeout]);
 
-  const handleImageChange = () => {
+  const handleImageChange = useCallback(() => {
     const currentPage = pages[currentPageId];
     if (currentPage?.images && currentPage.images.length > 1) {
       setImageIndex((prevIndex) => (prevIndex + 1) % currentPage.images.length);
     }
-  };
+  }, [currentPageId, pages]);
 
-  const scrollToStory = () => {
+  const scrollToStory = useCallback(() => {
     const storyContent = document.getElementById('story-content');
     if (storyContent) {
       storyContent.scrollIntoView({ behavior: 'smooth' });
     }
-  };
+  }, []);
 
   return {
     imageIndex,
-    setImageIndex,
     fadeIn,
+    isNavigating,
     handleChoice,
     handleGoBack,
     handleRestart,

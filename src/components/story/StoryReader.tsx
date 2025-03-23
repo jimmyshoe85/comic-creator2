@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, RotateCcw } from 'lucide-react';
 import { StoryData } from '../types';
 import { useStoryData } from '../hooks/useStoryData';
@@ -21,6 +21,7 @@ export function StoryReader({
   title = 'Interactive Story' 
 }: StoryReaderProps) {
   const [debugMode, setDebugMode] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
   
   // Use custom hooks to handle data and navigation
   const {
@@ -29,33 +30,63 @@ export function StoryReader({
     setCurrentPageId,
     history,
     setHistory,
-    error
+    error: dataError
   } = useStoryData(storyData);
   
   const {
     imageIndex,
     fadeIn,
+    isNavigating,
     handleChoice,
     handleGoBack,
     handleRestart,
     scrollToStory
   } = useStoryNavigation(pages, currentPageId, setCurrentPageId, history, setHistory);
 
+  // Set up global error handler to catch any navigation errors
+  useEffect(() => {
+    const originalConsoleError = console.error;
+    
+    console.error = (...args) => {
+      // Log to original console.error
+      originalConsoleError(...args);
+      
+      // Set error message for UI display
+      const errorString = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+      ).join(' ');
+      
+      setErrorMessage(prev => 
+        prev ? `${prev}\n${errorString}` : errorString
+      );
+    };
+    
+    return () => {
+      console.error = originalConsoleError;
+    };
+  }, []);
+
   const toggleDebugMode = () => setDebugMode(!debugMode);
 
-  // If there's an error, display it
-  if (error) {
+  // Display any errors that we've accumulated
+  const combinedError = dataError || errorMessage;
+  if (combinedError) {
     return (
       <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4">
-        <p className="text-red-500 mb-4">{error}</p>
-        {onExit && (
-          <button 
-            onClick={onExit}
-            className="px-4 py-2 bg-amber-700 text-white rounded hover:bg-amber-600"
-          >
-            Back
-          </button>
-        )}
+        <div className="max-w-2xl w-full bg-red-900/20 border border-red-900/50 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-red-300 mb-4">Error</h2>
+          <pre className="text-red-200 whitespace-pre-wrap overflow-auto max-h-96">
+            {combinedError}
+          </pre>
+          {onExit && (
+            <button 
+              onClick={onExit}
+              className="mt-6 px-4 py-2 bg-amber-700 text-white rounded hover:bg-amber-600"
+            >
+              Back
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -89,6 +120,16 @@ export function StoryReader({
         backgroundColor: !backgroundImage ? '#111827' : undefined
       }}
     >
+      {/* Loading overlay during navigation */}
+      {isNavigating && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-black/80 p-4 rounded-lg flex items-center gap-3">
+            <div className="w-5 h-5 border-t-2 border-amber-500 rounded-full animate-spin"></div>
+            <span className="text-amber-300">Navigating...</span>
+          </div>
+        </div>
+      )}
+      
       {/* Hero Section */}
       <div className="min-h-screen flex flex-col items-center justify-center text-center p-4 relative">
         <div className="absolute top-4 left-4 flex gap-2 z-10">
@@ -125,6 +166,7 @@ export function StoryReader({
             currentPageId={currentPageId}
             currentPage={currentPage}
             history={history}
+            pages={pages}
           />
         )}
         

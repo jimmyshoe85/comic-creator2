@@ -22,11 +22,18 @@ export function StoryControls({
   return (
     <div className="mt-auto space-y-2">
       {isEnding ? (
+        // In StoryControls.tsx
         <button
-          onClick={handleRestart}
-          className="w-full px-2 py-1 bg-red-900 hover:bg-red-800 text-white text-sm rounded text-center"
+        key={index}
+        onClick={() => {
+            console.log(`🔘 Button ${index} clicked: "${choice.text}" -> ${choice.targetId}`);
+            handleChoice(choice.targetId);
+        }}
+        disabled={!choice.targetId}
+        className={`w-full px-2 py-1 bg-red-900 hover:bg-red-800 text-white text-sm rounded text-center flex items-center justify-center gap-1 ${!choice.targetId ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          Start Over
+        <ChevronRight className="w-4 h-4" />
+        <span>{choice.text}</span>
         </button>
       ) : (
         decisions.length > 0 ? (

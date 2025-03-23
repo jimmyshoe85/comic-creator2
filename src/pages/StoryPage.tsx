@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Page, StoryData } from '../types';
-import { StoryPage as StoryPageComponent } from '../components/StoryPage';
+import { StoryData } from '../types';
+import { StoryReader } from '../components/StoryReader';
+import { Loader2 } from 'lucide-react';
 
 export function StoryPage() {
   const { folderId } = useParams();
-  const [pages, setPages] = useState<Record<string, Page>>({});
-  const [currentPage, setCurrentPage] = useState('');
-  const [history, setHistory] = useState<string[]>([]);
+  const navigate = useNavigate();
+  const [storyData, setStoryData] = useState<StoryData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [title, setTitle] = useState('');
+  const [backgroundImage, setBackgroundImage] = useState('');
 
   useEffect(() => {
     loadProject();
@@ -16,73 +20,91 @@ export function StoryPage() {
 
   async function loadProject() {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('projects')
-        .select('story_data')
+        .select('story_data, title, background_url')
         .eq('folder_id', folderId)
         .single();
 
       if (error) throw error;
 
-      const storyData: StoryData = data.story_data;
+      console.log("Loaded project data:", data);
       
-      // Convert nodes array to a map for easier access
-      const pagesMap: Record<string, Page> = {};
-      storyData.nodes.forEach(node => {
-        // Set ending type based on node type
-        if (node.type === 'badEnding') {
-          node.isEnding = true;
-          node.endingType = 'bad';
-        } else if (node.type === 'goodEnding') {
-          node.isEnding = true;
-          node.endingType = 'good';
-        } else if (node.type === 'bestEnding') {
-          node.isEnding = true;
-          node.endingType = 'best';
-        }
-        
-        // Add connections to decisions
-        const nodeConnections = storyData.connections.filter(conn => conn.sourceId === node.id);
-        node.decisions = node.decisions.map((decision, index) => ({
-          ...decision,
-          targetId: nodeConnections[index]?.targetId || null
-        }));
-        
-        pagesMap[node.id] = node;
-      });
-
-      setPages(pagesMap);
-      // Find the first node (usually has type 'intro' or similar)
-      const startNode = storyData.nodes.find(node => node.type === 'intro') || storyData.nodes[0];
-      setCurrentPage(startNode.id);
-      setHistory([startNode.id]);
-    } catch (error) {
-      console.error('Error loading project:', error);
+      setTitle(data.title || 'Untitled Story');
+      setBackgroundImage(data.background_url || '');
+      
+      // Verify data structure
+      if (!data.story_data) {
+        throw new Error('No story data found in the project');
+      }
+      
+      if (!data.story_data.nodes || !Array.isArray(data.story_data.nodes)) {
+        throw new Error('Invalid story data format: missing nodes array');
+      }
+      
+      console.log(`Story has ${data.story_data.nodes.length} nodes and ${data.story_data.connections?.length || 0} connections`);
+      
+      // Log a few sample nodes to debug
+      if (data.story_data.nodes.length > 0) {
+        console.log("First node:", data.story_data.nodes[0]);
+      }
+      
+      setStoryData(data.story_data);
+    } catch (err: any) {
+      console.error('Error loading project:', err);
+      setError(err.message || 'Failed to load story');
+    } finally {
+      setLoading(false);
     }
   }
 
-  const handleChoice = (choice: Choice) => {
-    if (choice.targetId) {
-      setCurrentPage(choice.targetId);
-      setHistory(prev => [...prev, choice.targetId]);
-    }
+  const handleBackToDashboard = () => {
+    navigate('/dashboard');
   };
 
-  const handleRestart = () => {
-    const startNode = Object.values(pages).find(page => page.type === 'intro') || Object.values(pages)[0];
-    setCurrentPage(startNode.id);
-    setHistory([startNode.id]);
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-amber-500 animate-spin" />
+      </div>
+    );
+  }
 
-  if (!pages[currentPage]) {
-    return <div>Loading...</div>;
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4">
+        <p className="text-red-500 mb-4">{error}</p>
+        <button 
+          onClick={handleBackToDashboard}
+          className="px-4 py-2 bg-amber-700 text-white rounded hover:bg-amber-600"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
+
+  if (!storyData) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4">
+        <p className="text-red-500 mb-4">No story data found</p>
+        <button 
+          onClick={handleBackToDashboard}
+          className="px-4 py-2 bg-amber-700 text-white rounded hover:bg-amber-600"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
   }
 
   return (
-    <StoryPageComponent
-      page={pages[currentPage]}
-      onChoice={handleChoice}
-      onRestart={handleRestart}
+    <StoryReader
+      storyData={storyData}
+      onExit={handleBackToDashboard}
+      backgroundImage={backgroundImage}
+      title={title}
     />
   );
 }

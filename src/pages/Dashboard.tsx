@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Upload, Plus, Loader2, LogOut } from 'lucide-react';
+import { Upload, Plus, Loader2, LogOut, BookOpen } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -114,8 +114,8 @@ export function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin" />
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+        <Loader2 className="w-8 h-8 animate-spin text-white" />
       </div>
     );
   }
@@ -126,13 +126,22 @@ export function Dashboard() {
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-4">
             <h1 className="text-3xl font-bold">Your Projects</h1>
-            <button
-              onClick={handleSignOut}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg"
-            >
-              <LogOut className="w-5 h-5" />
-              Sign Out
-            </button>
+            <div className="flex gap-4">
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg"
+              >
+                <LogOut className="w-5 h-5" />
+                Sign Out
+              </button>
+              <button
+                onClick={() => navigate('/story-test')}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-700 hover:bg-indigo-600 rounded-lg"
+              >
+                <BookOpen className="w-5 h-5" />
+                Test Story JSON
+              </button>
+            </div>
           </div>
           <label className="relative cursor-pointer">
             <input

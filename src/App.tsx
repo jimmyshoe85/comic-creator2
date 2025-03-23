@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Dashboard } from './pages/Dashboard';
 import { StoryPage } from './pages/StoryPage';
+import { StoryTest } from './pages/StoryTest';
 import { Login } from './pages/Login';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -32,6 +33,14 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="/story-test"
+            element={
+              <PrivateRoute>
+                <StoryTest />
+              </PrivateRoute>
+            }
+          />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
@@ -39,4 +48,4 @@ function App() {
   );
 }
 
-export default App
+export default App;

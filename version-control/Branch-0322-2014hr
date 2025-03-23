@@ -1,0 +1,74 @@
+# Interactive Story Reader Module
+
+## Overview
+This update adds a fully-featured interactive story reader component to the application. The implementation allows users to explore branching narrative stories with multiple choice decision points, image displays, and an immersive reading experience.
+
+## Key Features
+
+### StoryReader Component
+- **Hero/Cover Section**: Each page displays with a full-screen hero section showing the story title and current page title
+- **Story Content**: The full narrative content displays below the hero section with proper formatting
+- **Decision Points**: Interactive choices that affect the story outcome and branching narrative paths
+- **Image Gallery**: Support for multiple images per page with intuitive image cycling
+- **Navigation Controls**: Back button, restart capability, and clear page progression
+- **Responsive Design**: Works across mobile and desktop devices
+- **Debug Mode**: Optional debug panel for content verification and troubleshooting
+
+### Story Data Processing
+- Handles various story data formats including flow editor output
+- Processes connections between nodes to create a traversable story graph
+- Identifies special node types (endings, intro pages, etc.)
+- Properly maps page numbers and navigation paths
+
+### Dashboard Integration
+- Added story testing capability accessible from the dashboard
+- Projects display with thumbnails and titles for easy selection
+- Seamless integration with Supabase for story storage and retrieval
+
+## Technical Implementation
+
+### Components
+- **StoryReader.tsx**: Main story rendering and interaction component
+- **StoryPage.tsx**: Container component that loads story data from Supabase
+- **StoryTest.tsx**: Utility for testing JSON story files directly
+- **Dashboard.tsx**: Updated to include story testing and management
+
+### Data Flow
+1. Story JSON is loaded from Supabase or file upload
+2. Nodes and connections are processed into a navigable page structure
+3. The correct starting page is identified (prioritizing pages with pageNumber "1")
+4. User interacts with the story through the StoryReader interface
+5. Navigation actions update the current page and history
+
+## Usage Guide
+
+### Viewing a Story
+1. Select a story from the dashboard
+2. The hero section appears showing the story title
+3. Scroll down or click "Begin Reading" to view the story content
+4. Make choices to progress through the narrative
+5. Use the previous page button to revisit earlier content
+6. Click restart to begin the story again
+
+### Creating New Stories
+Stories can be created in two formats:
+1. Using a visual flow editor that exports JSON
+2. Directly writing a JSON file following the story schema
+
+Required structure:
+- `nodes`: Array of story pages with content, decisions, and metadata
+- `connections`: Defines how pages connect through decision points
+
+### Debugging
+If issues occur with story display:
+1. Click the "Debug" button in the upper left corner
+2. Review page metadata, content excerpts, and navigation history
+3. Check that the correct starting page is loaded
+4. Verify image paths and decision connections
+
+## Future Enhancements
+- Rich text formatting support
+- Audio integration for ambient sounds
+- Animation effects for transitions
+- Saving reader progress
+- Analytics for story engagement
